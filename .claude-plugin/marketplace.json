@@ -1,0 +1,11 @@
+{
+  "name": "ahorro-tokens",
+  "owner": { "name": "Noull999" },
+  "plugins": [
+    {
+      "name": "ahorro-tokens",
+      "source": "./",
+      "description": "Ahorra tokens: esfuerzo adaptado, avisos de límite, uso extra y salto a modelos gratis con OmniRoute"
+    }
+  ]
+}

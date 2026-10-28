@@ -1,0 +1,6 @@
+{
+  "name": "ahorro-tokens",
+  "version": "0.1.0",
+  "description": "Ajusta el esfuerzo (y opcionalmente el modelo) de cada paso según la acción que se está haciendo, para ahorrar tokens",
+  "types": "./types/index.d.ts"
+}

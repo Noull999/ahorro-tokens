@@ -815,7 +815,8 @@ ${lastAnswer || '(ninguna)'}
     const total = e.cost?.usd
     if (total !== undefined) {
       const seen = await read($, costSeen)
-      const grew = Math.max(0, total - seen)
+      // A total below the last reading means the engine started its cost over (/clear): all of it is new.
+      const grew = total >= seen ? total - seen : total
       await update($, costSeen, () => total)
       if (grew > 0) {
         const model = await $.session.model()

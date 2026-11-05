@@ -14,7 +14,7 @@ type Engine = Parameters<Parameters<typeof test>[1]>[0]
 
 const engine = (
   on: Parameters<Parameters<typeof test>[1]>[1],
-  { compactWorks = true, top, startModel = 'claude-opus-5-5', failingTools = false }: { compactWorks?: boolean; top?: Engine; startModel?: string; failingTools?: boolean } = {},
+  { compactWorks = true, top, startModel = 'claude-opus-5-5', failingTools = false, kept }: { kept?: { value: unknown; saved: unknown[] }; compactWorks?: boolean; top?: Engine; startModel?: string; failingTools?: boolean } = {},
 ) => {
   const seen = {
     toasts: [] as string[],
@@ -29,8 +29,14 @@ const engine = (
   on('prompt.submit', (_, e) => ({ text: e.text }))
   on('command.register', () => ({ value: { command: 'ahorro' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('store.get', () => ({ value: undefined }))
-  on('store.set', () => ({ value: undefined }))
+  on('store.get', () => ({ value: kept?.value }))
+  on('store.set', (_, e) => {
+    if (kept) {
+      kept.value = e.value
+      kept.saved.push(e.value)
+    }
+    return { value: undefined }
+  })
   on('ui.toast', (_, e) => {
     seen.toasts.push(e.text)
     return { value: undefined }
@@ -186,4 +192,20 @@ test('a /compact typed by the person also saves its summary', async ($, on) => {
   expect(seen.writes.length).toBe(1)
   expect(seen.writes[0].path.split('\\').join('/').endsWith('/proyecto/.claude/ahorro-contexto.md')).toBe(true)
   expect(seen.writes[0].text.includes('Dónde quedó')).toBe(true)
+})
+
+test('extra usage counts only the cost past the 5 h limit, not a resumed chat old cost', async ($, on) => {
+  const kept = { value: { budget: 5, used: 0 } as unknown, saved: [] as unknown[] }
+  engine(on, { kept })
+  const saved = kept.saved
+  await $.session.start({ cwd: '/proyecto', surface: 'desktop', isInteractive: true })
+  const limit = [{ kind: 'five_hour', percentUsed: 100, resetsAt: null }] as never
+  const measure = (usd: number) =>
+    $.session.measure({ context: { tokens: 1000, window: 200_000, percent: 1 }, rateLimits: limit, cost: { usd }, changed: ['cost'] })
+  await measure(36)
+  expect(saved.length).toBe(0)
+  await measure(37)
+  expect(saved.at(-1)).toEqual({ budget: 5, used: 1 })
+  await measure(0.5)
+  expect(saved.at(-1)).toEqual({ budget: 5, used: 1.5 })
 })
